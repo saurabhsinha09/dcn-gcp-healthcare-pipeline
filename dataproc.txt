@@ -1,0 +1,10 @@
+CLUSTER_NAME="my-demo-cluster1" 
+
+REGION="asia-south1" 
+
+gcloud dataproc clusters create my-demo-cluster1 --enable-component-gateway --region asia-south1 \
+--subnet default --no-address --master-machine-type n4-standard-2 --master-boot-disk-type hyperdisk-balanced \
+--master-boot-disk-size 100 --num-workers 2 --worker-machine-type n4-standard-2 \
+--worker-boot-disk-type hyperdisk-balanced --worker-boot-disk-size 100 --image-version 2.3-debian12 \
+--optional-components ICEBERG,DELTA,JUPYTER --scopes 'https://www.googleapis.com/auth/cloud-platform' \
+--project dcn-development
