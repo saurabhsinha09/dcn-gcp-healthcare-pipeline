@@ -1,8 +1,11 @@
+import os
 import airflow
 from airflow import DAG
 from datetime import timedelta
 from airflow.utils.dates import days_ago
 from airflow.operators.dagrun_operator import TriggerDagRunOperator
+
+NOTIFICATION_EMAIL = os.environ.get("NOTIFICATION_EMAIL", "default_admin@gmail.com")
 
 # Define default arguments
 ARGS = {
@@ -11,7 +14,7 @@ ARGS = {
     "depends_on_past": False,
     "email_on_failure": False,
     "email_on_retry": False,
-    "email": ["***@gmail.com"],
+    "email": [NOTIFICATION_EMAIL],
     "email_on_success": False,
     "retries": 1,
     "retry_delay": timedelta(minutes=5)

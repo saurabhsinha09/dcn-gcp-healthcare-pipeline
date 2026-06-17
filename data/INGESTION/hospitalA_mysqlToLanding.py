@@ -20,17 +20,20 @@ ARCHIVE_PATH = f"gs://{GCS_BUCKET}/landing/{HOSPITAL_NAME}/archive/"
 CONFIG_FILE_PATH = f"gs://{GCS_BUCKET}/configs/load_config.csv"
 
 # BigQuery Configuration
-BQ_PROJECT = "dcn-development"
+BQ_PROJECT = os.environ.get("PROJECT_ID", "dcn-development")
 BQ_AUDIT_TABLE = f"{BQ_PROJECT}.healthcare_temp.audit_log"
 BQ_LOG_TABLE = f"{BQ_PROJECT}.healthcare_temp.pipeline_logs"
 BQ_TEMP_PATH = f"{GCS_BUCKET}/temp/"  
 
 # MySQL Configuration
+MYSQL_HOST = os.environ.get("MYSQL_HOST_A", "34.100.130.157")
+MYSQL_DB = os.environ.get("MYSQL_DB_A", "hospital_a_db")
+
 MYSQL_CONFIG = {
-    "url": "jdbc:mysql://34.100.130.157:3306/hospital_a_db?useSSL=false&allowPublicKeyRetrieval=true",
+    "url": f"jdbc:mysql://{MYSQL_HOST}:3306/{MYSQL_DB}?useSSL=false&allowPublicKeyRetrieval=true",
     "driver": "com.mysql.cj.jdbc.Driver",
     "user": os.environ.get("MYSQL_USER", "myuser"),
-    "password": os.environ.get("MYSQL_PASSWORD", "Welcome!1234")
+    "password": os.environ.get("MYSQL_PASSWORD", "Welcome1234")
 }
 
 ##------------------------------------------------------------------------------------------------------------------##
@@ -110,7 +113,7 @@ def get_latest_watermark(table_name):
     query = f"""
         SELECT MAX(load_timestamp) AS latest_timestamp
         FROM `{BQ_AUDIT_TABLE}`
-        WHERE tablename = '{table_name}' and data_source = "hospital_a_db"
+        WHERE tablename = '{table_name}' and data_source = "{MYSQL_DB}"
     """
     query_job = bq_client.query(query)
     result = query_job.result()
@@ -150,7 +153,7 @@ def extract_and_save_to_landing(table, load_type, watermark_col):
         
         # Insert Audit Entry
         audit_df = spark.createDataFrame([
-            ("hospital_a_db", table, load_type, df.count(), datetime.datetime.now(), "SUCCESS")], 
+            (MYSQL_DB, table, load_type, df.count(), datetime.datetime.now(), "SUCCESS")], 
             ["data_source", "tablename", "load_type", "record_count", "load_timestamp", "status"])
 
         (audit_df.write.format("bigquery")

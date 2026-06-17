@@ -1,3 +1,4 @@
+import os
 from pyspark.sql import SparkSession
 
 # Create Spark session
@@ -6,9 +7,10 @@ spark = SparkSession.builder \
                     .getOrCreate()
 
 # configure variables
-BUCKET_NAME = "dcn-healthcare-bucket"
+BUCKET_NAME = os.environ.get("GCS_BUCKET", "dcn-healthcare-bucket")
+PROJECT_ID = os.environ.get("PROJECT_ID", "dcn-development")
 CPT_BUCKET_PATH = f"gs://{BUCKET_NAME}/landing/cptcodes/*.csv"
-BQ_TABLE = "dcn-development.healthcare_bronze.cpt_codes"
+BQ_TABLE = f"{PROJECT_ID}.healthcare_bronze.cpt_codes"
 TEMP_GCS_BUCKET = f"{BUCKET_NAME}/temp/"
 
 # read from cpt

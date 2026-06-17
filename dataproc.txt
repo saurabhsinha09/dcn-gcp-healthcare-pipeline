@@ -2,6 +2,13 @@ CLUSTER_NAME="my-demo-cluster1"
 
 REGION="asia-south1" 
 
+# Step 1: Create Cloud Router (Required for NAT)
+gcloud compute routers create healthcare-router --network default --region asia-south1
+
+# Step 2: Create Cloud NAT (Allows private nodes to access External APIs)
+gcloud compute routers nats create healthcare-nat --router healthcare-router --region asia-south1 --auto-allocate-nat-external-ips --nat-all-subnet-ip-ranges
+
+# Step 3: Create Dataproc Cluster
 gcloud dataproc clusters create my-demo-cluster1 --enable-component-gateway --region asia-south1 \
 --subnet default --no-address --master-machine-type n4-standard-2 --master-boot-disk-type hyperdisk-balanced \
 --master-boot-disk-size 100 --num-workers 2 --worker-machine-type n4-standard-2 \

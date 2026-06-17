@@ -1,5 +1,6 @@
 from datetime import date
 import requests
+import os
 from pyspark.sql import SparkSession
 
 # No need to import or initialize SparkSession in Databricks notebooks
@@ -10,6 +11,7 @@ current_date = date.today()
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("NPI Data").getOrCreate()
+GCS_BUCKET = os.environ.get("GCS_BUCKET", "dcn-healthcare-bucket")
 
 # Base URL for the NPI Registry API
 base_url = "https://npiregistry.cms.hhs.gov/api/"
@@ -73,8 +75,8 @@ if response.status_code == 200:
     if detailed_results:
         print(detailed_results)
         df = spark.createDataFrame(detailed_results)
-#         display(df)
-        df.write.format("parquet").mode("overwrite").save("gs://healthcare-bucket-22032025/landing/npi_extract/")
+
+        df.write.format("parquet").mode("overwrite").save(f"gs://{GCS_BUCKET}/landing/npi_extract/")
 
     else:
         print("No detailed results found.")

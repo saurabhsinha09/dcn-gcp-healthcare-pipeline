@@ -67,9 +67,19 @@ The pipeline follows a modern data engineering workflow on Google Cloud Platform
 ## 📂 Project Structure
 
 ```text
+├── architecture.jpg            # Architecture diagram
 ├── data/
-│   ├── BQ/                     # SQL scripts for Bronze, Silver, and Gold transformations
-│   └── INGESTION/              # PySpark scripts for data extraction and landing
+│   ├── BQ/                     # SQL scripts for Medallion transformations
+│   │   ├── bronze.sql          # Raw to Bronze loading
+│   │   ├── silver.sql          # Silver layer (SCD Type 2/Cleansing)
+│   │   └── gold.sql            # Gold layer (Analytics/Aggregations)
+│   └── INGESTION/              # PySpark scripts for data extraction
+│       ├── hospitalA_mysqlToLanding.py
+│       ├── hospitalB_mysqlToLanding.py
+│       ├── claims.py           # GCS CSV ingestion
+│       ├── cpt_codes.py        # CPT codes metadata ingestion
+│       ├── npi_codes.py        # External API (NPI Registry) ingestion
+│       └── icd_codes.py        # External API (WHO ICD-10) ingestion
 ├── utils/
 │   ├── add_dags_to_composer.py # Helper script to sync local files to Composer bucket
 │   └── requirements.txt        # Python dependencies
@@ -107,17 +117,58 @@ The pipeline follows a modern data engineering workflow on Google Cloud Platform
 *   APIs enabled: Dataproc, BigQuery, Cloud SQL, Cloud Composer.
 *   `gcloud` CLI configured.
 
-### Deployment
-1.  **Configure Environment**:
-    Update the `COMPOSER_BUCKET` and `PROJECT_ID` variables in `workflows/pyspark_dag.py` and `workflows/bq_dag.py`.
+### 1. Cloud Infrastructure Setup
+Before deploying the pipeline, you must set up the networking and compute infrastructure.
 
-2.  **Upload Code to Composer**:
+**Networking (NAT Gateway):**
+Because the Dataproc nodes do not have public IP addresses (`--no-address`), you must configure a Cloud NAT to allow the ingestion scripts to access external APIs.
+```bash
+# Create a Cloud Router
+gcloud compute routers create healthcare-router --network default --region asia-south1
+
+# Create a Cloud NAT Gateway
+gcloud compute routers nats create healthcare-nat --router healthcare-router --region asia-south1 --auto-allocate-nat-external-ips --nat-all-subnet-ip-ranges
+
+# Create Dataproc Cluster
+gcloud dataproc clusters create my-demo-cluster1 --enable-component-gateway --region asia-south1 \
+--subnet default --no-address --master-machine-type n4-standard-2 --master-boot-disk-type hyperdisk-balanced \
+--master-boot-disk-size 100 --num-workers 2 --worker-machine-type n4-standard-2 \
+--worker-boot-disk-type hyperdisk-balanced --worker-boot-disk-size 100 --image-version 2.3-debian12 \
+--optional-components ICEBERG,DELTA,JUPYTER --scopes 'https://www.googleapis.com/auth/cloud-platform' \
+--project {project_id} --zone asia-south1-a
+```
+
+### 2. Deployment
+1.  **Configure Environment Variables**:
+    The pipeline relies on environment variables for security and flexibility. Set the following variables in your Cloud Composer environment (Environment Configuration > Environment variables):
+
+    | Variable Name | Description | Example Value |
+    | :--- | :--- | :--- |
+    | `PROJECT_ID` | Your GCP Project ID | `dcn-development` |
+    | `REGION` | GCP Region for Dataproc/Composer | `asia-south1` |
+    | `DATAPROC_CLUSTER_NAME` | Name of the Dataproc cluster | `my-demo-cluster1` |
+    | `COMPOSER_BUCKET` | The GCS bucket created by Composer | `asia-south1-dcn-healthcare-bucket` |
+    | `GCS_BUCKET` | The main bucket for the Data Lake | `dcn-healthcare-bucket` |
+    | `MYSQL_USER` | Username for Cloud SQL | `myuser` |
+    | `MYSQL_PASSWORD` | Password for Cloud SQL | `Welcome1234` |
+    | `MYSQL_HOST_A` | IP/Host for Hospital A MySQL | `34.100.130.157` |
+    | `MYSQL_HOST_B` | IP/Host for Hospital B MySQL | `35.244.46.135` |
+    | `MYSQL_DB_A` | Database name for Hospital A | `hospital_a_db` |
+    | `MYSQL_DB_B` | Database name for Hospital B | `hospital_b_db` |
+    | `NOTIFICATION_EMAIL` | Email for Airflow alerts | `admin@example.com` |
+
+    *Note: For production, it is recommended to store `MYSQL_PASSWORD` in **Secret Manager** instead of environment variables.*
+
+2.  **Upload Code to Cloud Storage**:
     Use the utility script to upload DAGs and PySpark scripts to your Composer environment:
     ```bash
     python utils/add_dags_to_composer.py --dags_directory ./workflows --dags_bucket <YOUR_BUCKET> --data_directory ./data
     ```
 
-3.  **Configure MySQL**:
+3.  **Install Dependencies**:
+    Ensure the Python dependencies are installed in your Composer environment. You can upload `utils/requirements.txt` via the Composer "PyPI Packages" tab.
+
+4.  **Configure MySQL**:
     Ensure your Cloud SQL instances allow connections from the Dataproc cluster and that credentials match those in the ingestion scripts.
 
 ## 📊 Analytics & Reporting

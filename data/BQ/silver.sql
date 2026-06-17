@@ -1,7 +1,7 @@
 -- IN THIS WE WE WILL IMPLEMENTING BOTH SCD2 AND CDM LOGIC FOR THE SILVER TABLES
 
 -- 1. Create table departments by Merge Data from Hospital A & B  
-CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.departments` (
+CREATE TABLE IF NOT EXISTS `{{ params.project_id }}.healthcare_silver.departments` (
     Dept_Id STRING,
     SRC_Dept_Id STRING,
     Name STRING,
@@ -10,10 +10,10 @@ CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.departments` (
 );
 
 -- 2. Truncate Silver Table Before Inserting 
-TRUNCATE TABLE `dcn-development.healthcare_silver.departments`;
+TRUNCATE TABLE `{{ params.project_id }}.healthcare_silver.departments`;
 
 -- 3. full load by Inserting merged Data 
-INSERT INTO `dcn-development.healthcare_silver.departments`
+INSERT INTO `{{ params.project_id }}.healthcare_silver.departments`
 SELECT DISTINCT 
     CONCAT(deptid, '-', datasource) AS Dept_Id,
     deptid AS SRC_Dept_Id,
@@ -24,15 +24,15 @@ SELECT DISTINCT
         ELSE FALSE 
     END AS is_quarantined
 FROM (
-    SELECT DISTINCT *, 'hosa' AS datasource FROM `dcn-development.healthcare_bronze.departments_ha`
+    SELECT DISTINCT *, 'hosa' AS datasource FROM `{{ params.project_id }}.healthcare_bronze.departments_ha`
     UNION ALL
-    SELECT DISTINCT *, 'hosb' AS datasource FROM `dcn-development.healthcare_bronze.departments_hb`
+    SELECT DISTINCT *, 'hosb' AS datasource FROM `{{ params.project_id }}.healthcare_bronze.departments_hb`
 );
 
 -------------------------------------------------------------------------------------------------------
 
 -- 1. Create table providers by Merge Data from Hospital A & B  
-CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.providers` (
+CREATE TABLE IF NOT EXISTS `{{ params.project_id }}.healthcare_silver.providers` (
     ProviderID STRING,
     FirstName STRING,
     LastName STRING,
@@ -44,10 +44,10 @@ CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.providers` (
 );
 
 -- 2. Truncate Silver Table Before Inserting 
-TRUNCATE TABLE `dcn-development.healthcare_silver.providers`;
+TRUNCATE TABLE `{{ params.project_id }}.healthcare_silver.providers`;
 
 -- 3. full load by Inserting merged Data 
-INSERT INTO `dcn-development.healthcare_silver.providers`
+INSERT INTO `{{ params.project_id }}.healthcare_silver.providers`
 SELECT DISTINCT 
     ProviderID,
     FirstName,
@@ -61,15 +61,15 @@ SELECT DISTINCT
         ELSE FALSE 
     END AS is_quarantined
 FROM (
-    SELECT DISTINCT *, 'hosa' AS datasource FROM `dcn-development.healthcare_bronze.providers_ha`
+    SELECT DISTINCT *, 'hosa' AS datasource FROM `{{ params.project_id }}.healthcare_bronze.providers_ha`
     UNION ALL
-    SELECT DISTINCT *, 'hosb' AS datasource FROM `dcn-development.healthcare_bronze.providers_hb`
+    SELECT DISTINCT *, 'hosb' AS datasource FROM `{{ params.project_id }}.healthcare_bronze.providers_hb`
 );
 
 -------------------------------------------------------------------------------------------------------
 
 -- 1. Create patients Table in BigQuery
-CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.patients` (
+CREATE TABLE IF NOT EXISTS `{{ params.project_id }}.healthcare_silver.patients` (
     Patient_Key STRING,
     SRC_PatientID STRING,
     FirstName STRING,
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.patients` (
 );
 
 --Create a quality_checks temp table
-CREATE OR REPLACE TABLE `dcn-development.healthcare_silver.quality_checks` AS
+CREATE OR REPLACE TABLE `{{ params.project_id }}.healthcare_silver.quality_checks` AS
 SELECT DISTINCT 
     CONCAT(SRC_PatientID, '-', datasource) AS Patient_Key,
     SRC_PatientID,
@@ -120,7 +120,7 @@ FROM (
         Address,
         ModifiedDate,
         'hosa' AS datasource
-    FROM `dcn-development.healthcare_bronze.patients_ha`
+    FROM `{{ params.project_id }}.healthcare_bronze.patients_ha`
     UNION ALL
     SELECT DISTINCT 
         ID AS SRC_PatientID,
@@ -134,12 +134,12 @@ FROM (
         Address,
         ModifiedDate,
         'hosb' AS datasource
-    FROM `dcn-development.healthcare_bronze.patients_hb`
+    FROM `{{ params.project_id }}.healthcare_bronze.patients_hb`
 );
 
 -- 3. Apply SCD Type 2 Logic with MERGE
-MERGE INTO `dcn-development.healthcare_silver.patients` AS target
-USING `dcn-development.healthcare_silver.quality_checks` AS source
+MERGE INTO `{{ params.project_id }}.healthcare_silver.patients` AS target
+USING `{{ params.project_id }}.healthcare_silver.quality_checks` AS source
 ON target.Patient_Key = source.Patient_Key
 AND target.is_current = TRUE 
 -- Step 1: Mark existing records as historical if any column has changed
@@ -200,12 +200,12 @@ VALUES (
 );
 
 -- DROP quality_check table
-DROP TABLE IF EXISTS `dcn-development.healthcare_silver.quality_checks`;
+DROP TABLE IF EXISTS `{{ params.project_id }}.healthcare_silver.quality_checks`;
 
 -------------------------------------------------------------------------------------------------------
 
 -- 1. Create transactions Table in BigQuery
-CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.transactions` (
+CREATE TABLE IF NOT EXISTS `{{ params.project_id }}.healthcare_silver.transactions` (
     Transaction_Key STRING,
     SRC_TransactionID STRING,
     EncounterID STRING,
@@ -236,7 +236,7 @@ CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.transactions` (
 );
 
 -- 2. Create a quality_checks temp table
-CREATE OR REPLACE TABLE `dcn-development.healthcare_silver.quality_checks` AS
+CREATE OR REPLACE TABLE `{{ params.project_id }}.healthcare_silver.quality_checks` AS
 SELECT DISTINCT 
     CONCAT(TransactionID, '-', datasource) AS Transaction_Key,
     TransactionID AS SRC_TransactionID,
@@ -266,14 +266,14 @@ SELECT DISTINCT
         ELSE FALSE
     END AS is_quarantined
 FROM (
-    SELECT DISTINCT *, 'hosa' AS datasource FROM `dcn-development.healthcare_bronze.transactions_ha`
+    SELECT DISTINCT *, 'hosa' AS datasource FROM `{{ params.project_id }}.healthcare_bronze.transactions_ha`
     UNION ALL
-    SELECT DISTINCT *, 'hosb' AS datasource FROM `dcn-development.healthcare_bronze.transactions_hb`
+    SELECT DISTINCT *, 'hosb' AS datasource FROM `{{ params.project_id }}.healthcare_bronze.transactions_hb`
 );
 
 -- 3. Apply SCD Type 2 Logic with MERGE
-MERGE INTO `dcn-development.healthcare_silver.transactions` AS target
-USING `dcn-development.healthcare_silver.quality_checks` AS source
+MERGE INTO `{{ params.project_id }}.healthcare_silver.transactions` AS target
+USING `{{ params.project_id }}.healthcare_silver.quality_checks` AS source
 ON target.Transaction_Key = source.Transaction_Key
 AND target.is_current = TRUE 
 -- Step 1: Mark existing records as historical if any column has changed
@@ -367,12 +367,12 @@ VALUES (
 );
 
 -- 4. DROP quality_check table
-DROP TABLE IF EXISTS `dcn-development.healthcare_silver.quality_checks`;
+DROP TABLE IF EXISTS `{{ params.project_id }}.healthcare_silver.quality_checks`;
 
 -------------------------------------------------------------------------------------------------------
 
 -- 1. Create the encounters Table in BigQuery
-CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.encounters` (
+CREATE TABLE IF NOT EXISTS `{{ params.project_id }}.healthcare_silver.encounters` (
     Encounter_Key STRING,
     SRC_EncounterID STRING,
     PatientID STRING,
@@ -390,7 +390,7 @@ CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.encounters` (
 );
 
 -- 2. Create a quality_checks temp table for encounters
-CREATE OR REPLACE TABLE `dcn-development.healthcare_silver.quality_checks_encounters` AS
+CREATE OR REPLACE TABLE `{{ params.project_id }}.healthcare_silver.quality_checks_encounters` AS
 SELECT DISTINCT 
     CONCAT(SRC_EncounterID, '-', datasource) AS Encounter_Key,
     SRC_EncounterID,
@@ -417,7 +417,7 @@ FROM (
         ProcedureCode,
         ModifiedDate,
         'hosa' AS datasource
-    FROM `dcn-development.healthcare_bronze.encounters_ha`
+    FROM `{{ params.project_id }}.healthcare_bronze.encounters_ha`
     UNION ALL
     SELECT DISTINCT 
         EncounterID AS SRC_EncounterID,
@@ -429,12 +429,12 @@ FROM (
         ProcedureCode,
         ModifiedDate,
         'hosb' AS datasource
-    FROM `dcn-development.healthcare_bronze.encounters_hb`
+    FROM `{{ params.project_id }}.healthcare_bronze.encounters_hb`
 );
 
 -- 3. Apply SCD Type 2 Logic with MERGE
-MERGE INTO `dcn-development.healthcare_silver.encounters` AS target
-USING `dcn-development.healthcare_silver.quality_checks_encounters` AS source
+MERGE INTO `{{ params.project_id }}.healthcare_silver.encounters` AS target
+USING `{{ params.project_id }}.healthcare_silver.quality_checks_encounters` AS source
 ON target.Encounter_Key = source.Encounter_Key
 AND target.is_current = TRUE 
 
@@ -490,12 +490,12 @@ VALUES (
 );
 
 -- 4. DROP quality_check table
-DROP TABLE IF EXISTS `dcn-development.healthcare_silver.quality_checks_encounters`;
+DROP TABLE IF EXISTS `{{ params.project_id }}.healthcare_silver.quality_checks_encounters`;
 
 -------------------------------------------------------------------------------------------------------
 
 -- 1. Create the Claims Table in BigQuery
-CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.claims` (
+CREATE TABLE IF NOT EXISTS `{{ params.project_id }}.healthcare_silver.claims` (
     Claim_Key STRING,
     SRC_ClaimID STRING,
     TransactionID STRING,
@@ -523,7 +523,7 @@ CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.claims` (
 );
 
 -- 2. Create a quality_checks temp table for claims
-CREATE OR REPLACE TABLE `dcn-development.healthcare_silver.quality_checks_claims` AS
+CREATE OR REPLACE TABLE `{{ params.project_id }}.healthcare_silver.quality_checks_claims` AS
 SELECT 
     CONCAT(SRC_ClaimID, '-', datasource) AS Claim_Key,
     SRC_ClaimID,
@@ -570,12 +570,12 @@ FROM (
         InsertDate,
         ModifiedDate,
         'hosa' AS datasource
-    FROM `dcn-development.healthcare_bronze.claims`
+    FROM `{{ params.project_id }}.healthcare_bronze.claims`
 );
 
 -- 3. Apply SCD Type 2 Logic with MERGE
-MERGE INTO `dcn-development.healthcare_silver.claims` AS target
-USING `dcn-development.healthcare_silver.quality_checks_claims` AS source
+MERGE INTO `{{ params.project_id }}.healthcare_silver.claims` AS target
+USING `{{ params.project_id }}.healthcare_silver.quality_checks_claims` AS source
 ON target.Claim_Key = source.Claim_Key
 AND target.is_current = TRUE 
 -- Step 1: Mark existing records as historical if any column has changed
@@ -659,12 +659,12 @@ VALUES (
 );
 
 -- 4. DROP quality_check table
-DROP TABLE IF EXISTS `dcn-development.healthcare_silver.quality_checks_claims`;
+DROP TABLE IF EXISTS `{{ params.project_id }}.healthcare_silver.quality_checks_claims`;
 
 -------------------------------------------------------------------------------------------------------
 
 -- 1. Create the CP Codes Silver Table in BigQuery
-CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.cpt_codes` (
+CREATE TABLE IF NOT EXISTS `{{ params.project_id }}.healthcare_silver.cpt_codes` (
     CP_Code_Key STRING,
     procedure_code_category STRING,
     cpt_codes STRING,
@@ -678,7 +678,7 @@ CREATE TABLE IF NOT EXISTS `dcn-development.healthcare_silver.cpt_codes` (
 );
 
 -- 2. Create a quality_checks temp table for CP Codes
-CREATE OR REPLACE TABLE `dcn-development.healthcare_silver.quality_checks_cpt_codes` AS
+CREATE OR REPLACE TABLE `{{ params.project_id }}.healthcare_silver.quality_checks_cpt_codes` AS
 SELECT 
     CONCAT(cpt_codes, '-', datasource) AS CP_Code_Key,
     procedure_code_category,
@@ -698,12 +698,12 @@ FROM (
         procedure_code_descriptions,
         code_status,
         'hosa' AS datasource
-    FROM `dcn-development.healthcare_bronze.cpt_codes`
+    FROM `{{ params.project_id }}.healthcare_bronze.cpt_codes`
 );
 
 -- 3. Apply SCD Type 2 Logic with MERGE
-MERGE INTO `dcn-development.healthcare_silver.cpt_codes` AS target
-USING `dcn-development.healthcare_silver.quality_checks_cpt_codes` AS source
+MERGE INTO `{{ params.project_id }}.healthcare_silver.cpt_codes` AS target
+USING `{{ params.project_id }}.healthcare_silver.quality_checks_cpt_codes` AS source
 ON target.CP_Code_Key = source.CP_Code_Key
 AND target.is_current = TRUE 
 -- Step 1: Mark existing records as historical if any column has changed
@@ -746,4 +746,4 @@ VALUES (
 );
 
 -- 4. DROP quality_check table
-DROP TABLE IF EXISTS `dcn-development.healthcare_silver.quality_checks_cpt_codes`;
+DROP TABLE IF EXISTS `{{ params.project_id }}.healthcare_silver.quality_checks_cpt_codes`;

@@ -18,15 +18,30 @@ COMPOSER_BUCKET = os.environ.get("COMPOSER_BUCKET", "asia-south1-dcn-healthcare-
 
 # Environment variables to pass to PySpark jobs
 MYSQL_USER = os.environ.get("MYSQL_USER", "myuser")
-MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "Welcome!1234")
+MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "Welcome1234")
+MYSQL_HOST_A = os.environ.get("MYSQL_HOST_A", "34.100.130.157")
+MYSQL_HOST_B = os.environ.get("MYSQL_HOST_B", "35.244.46.135")
+MYSQL_DB_A = os.environ.get("MYSQL_DB_A", "hospital_a_db")
+MYSQL_DB_B = os.environ.get("MYSQL_DB_B", "hospital_b_db")
 GCS_BUCKET = os.environ.get("GCS_BUCKET", "dcn-healthcare-bucket")
+NOTIFICATION_EMAIL = os.environ.get("NOTIFICATION_EMAIL", "default_admin@gmail.com")
 
 JOB_PROPERTIES = {
+    "spark.executorEnv.PROJECT_ID": PROJECT_ID,
     "spark.executorEnv.MYSQL_USER": MYSQL_USER,
     "spark.executorEnv.MYSQL_PASSWORD": MYSQL_PASSWORD,
+    "spark.executorEnv.MYSQL_HOST_A": MYSQL_HOST_A,
+    "spark.executorEnv.MYSQL_HOST_B": MYSQL_HOST_B,
+    "spark.executorEnv.MYSQL_DB_A": MYSQL_DB_A,
+    "spark.executorEnv.MYSQL_DB_B": MYSQL_DB_B,
     "spark.executorEnv.GCS_BUCKET": GCS_BUCKET,
+    "spark.yarn.appMasterEnv.PROJECT_ID": PROJECT_ID,
     "spark.yarn.appMasterEnv.MYSQL_USER": MYSQL_USER,
     "spark.yarn.appMasterEnv.MYSQL_PASSWORD": MYSQL_PASSWORD,
+    "spark.yarn.appMasterEnv.MYSQL_HOST_A": MYSQL_HOST_A,
+    "spark.yarn.appMasterEnv.MYSQL_HOST_B": MYSQL_HOST_B,
+    "spark.yarn.appMasterEnv.MYSQL_DB_A": MYSQL_DB_A,
+    "spark.yarn.appMasterEnv.MYSQL_DB_B": MYSQL_DB_B,
     "spark.yarn.appMasterEnv.GCS_BUCKET": GCS_BUCKET,
 }
 
@@ -77,7 +92,7 @@ ARGS = {
     "depends_on_past": False,
     "email_on_failure": False,
     "email_on_retry": False,
-    "email": ["***@gmail.com"],
+    "email": [NOTIFICATION_EMAIL],
     "email_on_success": False,
     "retries": 1,
     "retry_delay": timedelta(minutes=5)
