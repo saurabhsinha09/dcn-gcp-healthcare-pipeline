@@ -1,4 +1,5 @@
 # import all modules
+import os
 import airflow
 from airflow import DAG
 from datetime import timedelta
@@ -10,37 +11,63 @@ from airflow.providers.google.cloud.operators.dataproc import (
 )
 
 # define the variables
-PROJECT_ID = "dcn-development"
-REGION = "asia-south1"
-CLUSTER_NAME = "my-demo-cluster1"
-COMPOSER_BUCKET = "asia-south1-dcn-healthcare--e3f496b8-bucket" ## change this 
+PROJECT_ID = os.environ.get("PROJECT_ID", "dcn-development")
+REGION = os.environ.get("REGION", "asia-south1")
+CLUSTER_NAME = os.environ.get("DATAPROC_CLUSTER_NAME", "my-demo-cluster1")
+COMPOSER_BUCKET = os.environ.get("COMPOSER_BUCKET", "asia-south1-dcn-healthcare--e3f496b8-bucket")
+
+# Environment variables to pass to PySpark jobs
+MYSQL_USER = os.environ.get("MYSQL_USER", "myuser")
+MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "Welcome!1234")
+GCS_BUCKET = os.environ.get("GCS_BUCKET", "dcn-healthcare-bucket")
+
+JOB_PROPERTIES = {
+    "spark.executorEnv.MYSQL_USER": MYSQL_USER,
+    "spark.executorEnv.MYSQL_PASSWORD": MYSQL_PASSWORD,
+    "spark.executorEnv.GCS_BUCKET": GCS_BUCKET,
+    "spark.yarn.appMasterEnv.MYSQL_USER": MYSQL_USER,
+    "spark.yarn.appMasterEnv.MYSQL_PASSWORD": MYSQL_PASSWORD,
+    "spark.yarn.appMasterEnv.GCS_BUCKET": GCS_BUCKET,
+}
 
 GCS_JOB_FILE_1 = f"gs://{COMPOSER_BUCKET}/data/INGESTION/hospitalA_mysqlToLanding.py"
 PYSPARK_JOB_1 = {
     "reference": {"project_id": PROJECT_ID},
     "placement": {"cluster_name": CLUSTER_NAME},
-    "pyspark_job": {"main_python_file_uri": GCS_JOB_FILE_1},
+    "pyspark_job": {
+        "main_python_file_uri": GCS_JOB_FILE_1,
+        "properties": JOB_PROPERTIES
+    },
 }
 
 GCS_JOB_FILE_2 = f"gs://{COMPOSER_BUCKET}/data/INGESTION/hospitalB_mysqlToLanding.py"
 PYSPARK_JOB_2 = {
     "reference": {"project_id": PROJECT_ID},
     "placement": {"cluster_name": CLUSTER_NAME},
-    "pyspark_job": {"main_python_file_uri": GCS_JOB_FILE_2},
+    "pyspark_job": {
+        "main_python_file_uri": GCS_JOB_FILE_2,
+        "properties": JOB_PROPERTIES
+    },
 }
 
 GCS_JOB_FILE_3 = f"gs://{COMPOSER_BUCKET}/data/INGESTION/claims.py"
 PYSPARK_JOB_3 = {
     "reference": {"project_id": PROJECT_ID},
     "placement": {"cluster_name": CLUSTER_NAME},
-    "pyspark_job": {"main_python_file_uri": GCS_JOB_FILE_3},
+    "pyspark_job": {
+        "main_python_file_uri": GCS_JOB_FILE_3,
+        "properties": JOB_PROPERTIES
+    },
 }
 
 GCS_JOB_FILE_4 = f"gs://{COMPOSER_BUCKET}/data/INGESTION/cpt_codes.py"
 PYSPARK_JOB_4 = {
     "reference": {"project_id": PROJECT_ID},
     "placement": {"cluster_name": CLUSTER_NAME},
-    "pyspark_job": {"main_python_file_uri": GCS_JOB_FILE_4},
+    "pyspark_job": {
+        "main_python_file_uri": GCS_JOB_FILE_4,
+        "properties": JOB_PROPERTIES
+    },
 }
 
 
